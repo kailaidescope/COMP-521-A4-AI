@@ -110,4 +110,12 @@ public class Partition : MonoBehaviour
             occupied = null;
         }
     }
+    
+    void OnTriggerStay(Collider collider)
+    {
+        if (occupied == null)
+        {
+            occupied = collider.gameObject;
+        }
+    }
 }

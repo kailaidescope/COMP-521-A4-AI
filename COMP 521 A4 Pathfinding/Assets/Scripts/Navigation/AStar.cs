@@ -58,7 +58,8 @@ public class AStar
     }
 
     // A* algorithm:
-    // Searches for shortest path from start to goal
+    // Searches for shortest path from start to goal, 
+    // allows traversal through spaces occupied by the seeker
     public static List<Partition> FindPath(Partition start, Partition goal, GameObject seeker)
     {
         Dictionary<Partition, float> gValues = new Dictionary<Partition, float>();
@@ -101,6 +102,59 @@ public class AStar
                             openSet.Enqueue(neighbor, neighbor);
                         }
                     }
+                }
+            }
+        }
+
+        //throw new Exception("Path unable to be found");
+        return null;
+    }
+
+    // A* algorithm:
+    // Searches for shortest path from start to goal
+    // Allows for traverals through spaces occupied by ignoreObjects
+    public static List<Partition> FindPath(Partition start, Partition goal, List<GameObject> ignoreObjects)
+    {
+        Dictionary<Partition, float> gValues = new Dictionary<Partition, float>();
+        Dictionary<Partition, Partition> cameFrom = new Dictionary<Partition, Partition>();
+
+        PriorityQueue<Partition, Partition> openSet = new PriorityQueue<Partition, Partition>(new PathQueueComparer(gValues, goal));
+        openSet.Enqueue(start, start);
+
+        gValues.Add(start, 0);
+
+        int i = 0;
+
+        while (openSet.Count > 0)
+        {
+            i++;
+            //Debug.Log(i);
+            Partition current = openSet.Dequeue();
+
+            if (current.Equals(goal))
+            {
+                //Debug.Log("Path found!");
+                return ReconstructPath(cameFrom, current);
+            }
+
+            //Debug.Log(current.GetConnectedPartitions().Count + ", " + current.GetEdges().Count);
+            foreach (Partition neighbor in current.GetConnectedPartitions())
+            {
+                if (neighbor.GetOccupied() == null || ignoreObjects.Contains(neighbor.GetOccupied()))
+                {
+                    float tempGValue = gValues.GetValueOrDefault(current, -1) + neighbor.GetDistanceToPartition(current);
+
+                    if (tempGValue < gValues.GetValueOrDefault(neighbor, -1) || -1 == gValues.GetValueOrDefault(neighbor, -1))
+                    {
+                        ReplaceOrAddValue(gValues, neighbor, tempGValue);
+                        ReplaceOrAddValue(cameFrom, neighbor, current);
+                        
+                        //Debug.Log(openSet.ContainsKey(neighbor));
+                        if (!openSet.ContainsKey(neighbor))
+                        {
+                            openSet.Enqueue(neighbor, neighbor);
+                        }
+                    }      
                 }
             }
         }
