@@ -3,12 +3,16 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor.AI;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class AdventurerController : MonoBehaviour
 {
     public static List<GameObject> ADVENTURERS = new List<GameObject>();
     public static float SPEED = 2.5f;
     public static int RECALCULATE_BLOCKED_PATH_DISTANCE = 1;
+    public static int MAX_HEALTH = 6;
+
+    public Slider healthBar;
 
     private NavMesh navMesh;
     private Vector3 target;
@@ -16,6 +20,7 @@ public class AdventurerController : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        healthBar.value = MAX_HEALTH;
         ADVENTURERS.Add(gameObject);
         navMesh = FindObjectOfType<NavMesh>();
     }
@@ -24,6 +29,15 @@ public class AdventurerController : MonoBehaviour
     void Update()
     {
         
+    }
+
+    public void TakeDamage()
+    {
+        healthBar.value -= 1;
+        if (healthBar.value == 0)
+        {
+            gameObject.SetActive(false);
+        }
     }
 
     // Move minotaur from point start to end

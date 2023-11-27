@@ -11,24 +11,26 @@ public class MinotaurController : MonoBehaviour
     public static float SPEED = 5f;
     public static int RECALCULATE_BLOCKED_PATH_DISTANCE = 1;
     public static float HUNT_TRIGGER_DISTANCE = 5;
+    public static float ATTACK_RADIUS = 2;
+    public static float ATTACK_COOLDOWN = 1;
 
     public GameObject treasure;
+    public SpriteRenderer attackDisplay;
 
     private NavMesh navMesh;
-    private Vector3 target;
     private Vector3 lastTargetPosition;
     private List<Partition> path;
     private MinotaurState state;
+    private float secondsSinceLastAttack = 0;
 
     // Start is called before the first frame update
     void Start()
     {
         navMesh = FindObjectOfType<NavMesh>();
-
         var parts = navMesh.GetPartitions();
-
-        target = transform.position;
         path = null;
+    
+        attackDisplay.gameObject.SetActive(false);
 
         StartCoroutine(GuardTreasure());
     }
@@ -36,9 +38,11 @@ public class MinotaurController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        secondsSinceLastAttack += Time.deltaTime;
+
         foreach (GameObject adventurer in AdventurerController.ADVENTURERS)
         {
-            if (state == MinotaurState.Idle && Vector3.Distance(adventurer.transform.position, treasure.transform.position) <= HUNT_TRIGGER_DISTANCE)
+            if (adventurer.activeSelf && state == MinotaurState.Idle && Vector3.Distance(adventurer.transform.position, treasure.transform.position) <= HUNT_TRIGGER_DISTANCE)
             {
                 StopAllCoroutines();
                 StartCoroutine(HuntAdventurer(adventurer));
@@ -49,19 +53,85 @@ public class MinotaurController : MonoBehaviour
     // Make minotaur chase an adventurer
     IEnumerator HuntAdventurer(GameObject adventurer)
     {
+        //Debug.Log("hunting");
         state = MinotaurState.Attack;
 
-        while (Vector3.Distance(adventurer.gameObject.transform.position, treasure.transform.position) <= HUNT_TRIGGER_DISTANCE )
+        while (adventurer.activeSelf && (Vector3.Distance(adventurer.gameObject.transform.position, treasure.transform.position) <= HUNT_TRIGGER_DISTANCE 
+                || Vector3.Distance(adventurer.gameObject.transform.position, treasure.transform.position) <= HUNT_TRIGGER_DISTANCE/2 ))
         {
-            yield return StartCoroutine(FollowPath(navMesh.GetPartition(transform.position), navMesh.GetPartition(adventurer.transform.position), new List<GameObject>(){ gameObject, adventurer}));
+            yield return StartCoroutine(GoToPlayer(navMesh.GetPartition(transform.position), navMesh.GetPartition(adventurer.transform.position), adventurer));
         }
 
         StartCoroutine(GuardTreasure());
     }
 
+    // Move minotaur from point start to end
+    IEnumerator GoToPlayer(Partition start, Partition end, GameObject adventurer)
+    {
+        //Debug.Log("start follow path");
+        List<Partition> path = AStar.FindPath(start, end, new List<GameObject>(){ gameObject, adventurer });
+        
+        if (path == null)
+        {
+            yield break;
+        }
+
+        path.Remove(end);
+
+        yield return null;
+
+        if(path.Count == 0) { yield break; }
+        Vector3 nextPathPos = path[0].GetPosition() - path[0].GetPosition().y * Vector3.up + transform.position.y * Vector3.up;
+
+        while (!(path.Count == 1 && Vector3.Distance(transform.position, nextPathPos) < 0.001))
+        {
+            if (adventurer.activeSelf == false)
+            {
+                yield break;
+            }
+            if (Vector3.Distance(end.GetPosition(), adventurer.transform.position) > 2f)
+            {
+                RecalculatePath(path, end);
+            }
+            if (Vector3.Distance(transform.position, adventurer.transform.position) <= ATTACK_RADIUS && secondsSinceLastAttack > ATTACK_COOLDOWN)
+            {
+                StartCoroutine(Attack());
+            }
+            HandleBlockedPath(path, end);
+            MoveAlongPath(path);
+            DrawDebugPath(path, Color.red);
+            nextPathPos = path[0].GetPosition() - path[0].GetPosition().y * Vector3.up + transform.position.y * Vector3.up;
+            //Debug.Log("following path");
+            yield return null;
+        }
+        //Debug.Log("end follow path");
+    }
+
+    IEnumerator Attack()
+    {
+        //Debug.Log("attacking");
+        attackDisplay.gameObject.SetActive(true);
+        secondsSinceLastAttack = 0;
+
+        Collider[] hitObjects = Physics.OverlapCapsule(attackDisplay.transform.position, attackDisplay.transform.position + Vector3.up, ATTACK_RADIUS);
+
+        foreach (Collider collider in hitObjects)
+        {
+            AdventurerController adventurer = collider.GetComponent<AdventurerController>();
+            if (adventurer != null)
+            {
+                adventurer.TakeDamage();
+            }
+        }
+
+        yield return new WaitForSeconds(0.5f);
+        attackDisplay.gameObject.SetActive(false);
+    }
+
     // Make minotaur circle the treasure on a loop
     IEnumerator GuardTreasure()
     {
+        //Debug.Log("guarding");
         state = MinotaurState.Idle;
         Vector3 lastTreasurePos = treasure.transform.position;
         List<Partition> points = GeneratePatrolPoints(2);
@@ -97,7 +167,7 @@ public class MinotaurController : MonoBehaviour
 
         while (!(path.Count == 1 && Vector3.Distance(transform.position, nextPathPos) < 0.001))
         {
-            HandleBlockedPath(path);
+            HandleBlockedPath(path, end);
             MoveAlongPath(path);
             DrawDebugPath(path, Color.red);
             nextPathPos = path[0].GetPosition() - path[0].GetPosition().y * Vector3.up + transform.position.y * Vector3.up;
@@ -127,30 +197,9 @@ public class MinotaurController : MonoBehaviour
         return points;
     }
 
-    // Recalculates path when position of target changes or path is blocked
-    void HandleBlockedPath()
-    {
-        bool blocked = false;
-        if (path != null)
-        {
-            for (int i = 0; i < Mathf.Min(path.Count, RECALCULATE_BLOCKED_PATH_DISTANCE + 1); i++)
-        {
-            if (path[i].GetOccupied() != null && path[i].GetOccupied() != gameObject)
-            {
-                blocked = true;
-            }
-        }
-        }
-        
-
-        if (blocked || path == null)
-        {
-            path = AStar.FindPath(navMesh.GetPartition(transform.position), navMesh.GetPartition(target), gameObject);
-        }
-    }
 
     // Recalculates path when position of target changes or path is blocked
-    void HandleBlockedPath(List<Partition> curPath)
+    void HandleBlockedPath(List<Partition> curPath, Partition target)
     {
         bool blocked = false;
         if (curPath != null)
@@ -167,8 +216,13 @@ public class MinotaurController : MonoBehaviour
 
         if (blocked || curPath == null)
         {
-            curPath = AStar.FindPath(navMesh.GetPartition(transform.position), navMesh.GetPartition(target), gameObject);
+            RecalculatePath(curPath, target);
         }
+    }
+
+    void RecalculatePath(List<Partition> curPath, Partition target)
+    {
+        curPath = AStar.FindPath(navMesh.GetPartition(transform.position), target, gameObject);
     }
 
     // Handles movement towards target
@@ -246,12 +300,6 @@ public class MinotaurController : MonoBehaviour
     public List<Partition> GetPath()
     {
         return path;
-    }
-
-    public void SetTarget(Vector3 target)
-    {
-        this.target = target;
-        path = null;
     }
 
     public enum MinotaurState 

@@ -64,12 +64,12 @@
   <ItemGroup>
     <Compile Include="Assets/Scripts/Navigation/NavMesh.cs" />
     <Compile Include="Assets/Scripts/Navigation/AStar.cs" />
+    <Compile Include="Assets/Scripts/AdventurerController.cs" />
     <Compile Include="Assets/Scripts/Navigation/PriorityQueue.cs" />
     <Compile Include="Assets/Scripts/MinotaurController.cs" />
     <Compile Include="Assets/Scripts/PlayerInputController.cs" />
     <Compile Include="Assets/Scripts/Navigation/Edge.cs" />
     <Compile Include="Assets/Scripts/Navigation/Partition.cs" />
-    <Compile Include="Assets/Scripts/AdventurerController.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
