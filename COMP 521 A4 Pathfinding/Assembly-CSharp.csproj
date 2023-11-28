@@ -70,6 +70,7 @@
     <Compile Include="Assets/Scripts/PlayerInputController.cs" />
     <Compile Include="Assets/Scripts/Navigation/Edge.cs" />
     <Compile Include="Assets/Scripts/Navigation/Partition.cs" />
+    <Compile Include="Assets/Scripts/HTN/StateVector.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
