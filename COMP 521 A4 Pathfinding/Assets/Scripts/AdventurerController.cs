@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 public class AdventurerController : MonoBehaviour
 {
-    public static List<GameObject> ADVENTURERS = new List<GameObject>();
+    public static List<AdventurerController> ADVENTURERS = new List<AdventurerController>();
     public static float SPEED = 2.5f;
     public static int RECALCULATE_BLOCKED_PATH_DISTANCE = 1;
     public static int MAX_HEALTH = 6;
@@ -21,7 +21,7 @@ public class AdventurerController : MonoBehaviour
     void Start()
     {
         healthBar.value = MAX_HEALTH;
-        ADVENTURERS.Add(gameObject);
+        ADVENTURERS.Add(this);
         navMesh = FindObjectOfType<NavMesh>();
     }
 
