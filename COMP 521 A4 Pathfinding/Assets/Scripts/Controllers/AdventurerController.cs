@@ -86,12 +86,12 @@ public class AdventurerController : MonoBehaviour
                                 MinotaurController.MINOTAUR.GetCurrentTarget());
 
         texts[0].text = "Health: "+newState.health;
-        texts[1].text = "Dist Mino: "+newState.dist_minotaur;
-        texts[2].text = "Dist Tre: "+newState.dist_treasure;
-        texts[3].text = "Dist Cor: "+newState.dist_corner;
-        texts[4].text = "Sec Atk: "+newState.seconds_attack;
-        texts[5].text = "Sec Dmg: "+newState.seconds_damaged;
-        texts[6].text = "Sec Drop: "+newState.seconds_dropped_treasure;
+        texts[1].text = "Dist Mino: "+(int)newState.dist_minotaur;
+        texts[2].text = "Dist Tre: "+(int)newState.dist_treasure;
+        texts[3].text = "Dist Cor: "+(int)newState.dist_corner;
+        texts[4].text = "Sec Atk: "+(int)newState.seconds_attack;
+        texts[5].text = "Sec Dmg: "+(int)newState.seconds_damaged;
+        texts[6].text = "Sec Drop: "+(int)newState.seconds_dropped_treasure;
         texts[7].text = "LoS: "+newState.line_of_sight;
         texts[8].text = "Tre Hold: "+newState.treasure_holder;
         texts[9].text = "Min Trg: "+newState.minotaur_target;
