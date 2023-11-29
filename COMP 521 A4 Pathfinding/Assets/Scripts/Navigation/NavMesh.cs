@@ -6,7 +6,7 @@ using UnityEngine.ProBuilder;
 
 public class NavMesh : MonoBehaviour
 {
-    public GameObject partitionPrefab;
+    public UnityEngine.GameObject partitionPrefab;
     public Transform startTransform;
     public Transform endTransform;
     public Vector2[] referencePlaneCorners = new Vector2[2];

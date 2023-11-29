@@ -60,7 +60,7 @@ public class AStar
     // A* algorithm:
     // Searches for shortest path from start to goal, 
     // allows traversal through spaces occupied by the seeker
-    public static List<Partition> FindPath(Partition start, Partition goal, GameObject seeker)
+    public static List<Partition> FindPath(Partition start, Partition goal, UnityEngine.GameObject seeker)
     {
         Dictionary<Partition, float> gValues = new Dictionary<Partition, float>();
         Dictionary<Partition, Partition> cameFrom = new Dictionary<Partition, Partition>();
@@ -113,7 +113,7 @@ public class AStar
     // A* algorithm:
     // Searches for shortest path from start to goal
     // Allows for traverals through spaces occupied by ignoreObjects
-    public static List<Partition> FindPath(Partition start, Partition goal, List<GameObject> ignoreObjects)
+    public static List<Partition> FindPath(Partition start, Partition goal, List<UnityEngine.GameObject> ignoreObjects)
     {
         Dictionary<Partition, float> gValues = new Dictionary<Partition, float>();
         Dictionary<Partition, Partition> cameFrom = new Dictionary<Partition, Partition>();

@@ -1636,6 +1636,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 4343526525383809453, guid: 5763bca32098b4d2aa509fe38e2c3478, type: 3}
+      propertyPath: adventurerType
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7069167960336904747, guid: 5763bca32098b4d2aa509fe38e2c3478, type: 3}
       propertyPath: m_Color.b
       value: 0.04049486
