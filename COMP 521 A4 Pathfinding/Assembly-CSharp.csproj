@@ -64,17 +64,19 @@
   <ItemGroup>
     <Compile Include="Assets/Scripts/Navigation/NavMesh.cs" />
     <Compile Include="Assets/Scripts/Navigation/AStar.cs" />
-    <Compile Include="Assets/Scripts/AdventurerController.cs" />
+    <Compile Include="Assets/Scripts/Characters/CharacterController.cs" />
     <Compile Include="Assets/Scripts/Navigation/PriorityQueue.cs" />
     <Compile Include="Assets/Scripts/HTN/StateVector.cs" />
-    <Compile Include="Assets/Scripts/MinotaurController.cs" />
-    <Compile Include="Assets/Scripts/PlayerInputController.cs" />
+    <Compile Include="Assets/Scripts/Characters/MinotaurController.cs" />
+    <Compile Include="Assets/Scripts/Characters/PlayerInputController.cs" />
     <Compile Include="Assets/Scripts/Navigation/Edge.cs" />
     <Compile Include="Assets/Scripts/Navigation/Partition.cs" />
-    <Compile Include="Assets/Scripts/TreasureController.cs" />
+    <Compile Include="Assets/Scripts/Characters/TreasureController.cs" />
     <Compile Include="Assets/Scripts/HTN/Task.cs" />
     <Compile Include="Assets/Scripts/HTN/CompositeTask.cs" />
     <Compile Include="Assets/Scripts/HTN/BasicTask.cs" />
+    <Compile Include="Assets/Scripts/HTN/HTN.cs" />
+    <Compile Include="Assets/Scripts/Characters/MeleeController.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

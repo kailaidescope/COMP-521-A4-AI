@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class TreasureController : MonoBehaviour
 {
-    private AdventurerController holder = null;
+    private CharacterController holder = null;
 
     void Start()
     {
@@ -17,7 +17,7 @@ public class TreasureController : MonoBehaviour
         
     }
 
-    public bool PickupTreasure(AdventurerController adventurer)
+    public bool PickupTreasure(CharacterController adventurer)
     {
         if (holder == null)
         {
@@ -34,7 +34,7 @@ public class TreasureController : MonoBehaviour
         holder = null;
     }
 
-    public AdventurerController GetHolder()
+    public CharacterController GetHolder()
     {
         return holder;
     }

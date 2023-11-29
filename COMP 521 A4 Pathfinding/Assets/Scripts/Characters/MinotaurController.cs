@@ -24,9 +24,9 @@ public class MinotaurController : MonoBehaviour
     private MinotaurState state;
     private float secondsSinceLastAttack = 1;
     private float secondsSinceTookDmg = 5;
-    private AdventurerController lastAttackedBy = null;
-    private AdventurerController lastTarget = null;
-    private AdventurerController currentTarget = null;
+    private CharacterController lastAttackedBy = null;
+    private CharacterController lastTarget = null;
+    private CharacterController currentTarget = null;
 
     // Start is called before the first frame update
     void Start()
@@ -79,13 +79,13 @@ public class MinotaurController : MonoBehaviour
             currentTarget = lastAttackedBy;
         } else 
         {
-            AdventurerController closestAdventurerToTreasure = null;
+            CharacterController closestAdventurerToTreasure = null;
             float closestAdventurerToTreasureDist = -1;
 
-            AdventurerController closestAdventurerToMinotaur = null;
+            CharacterController closestAdventurerToMinotaur = null;
             float closestAdventurerToMinotaurDist = -1;
 
-            foreach (AdventurerController adventurer in AdventurerController.ADVENTURERS)
+            foreach (CharacterController adventurer in CharacterController.ADVENTURERS)
             {
                 float distanceToTreasure = Vector3.Distance(adventurer.transform.position, treasure.transform.position);
                 if (adventurer.gameObject.activeSelf && distanceToTreasure <= AGRO_DISTANCE)
@@ -134,7 +134,7 @@ public class MinotaurController : MonoBehaviour
     }
 
     // Make minotaur chase an adventurer
-    IEnumerator HuntAdventurer(AdventurerController adventurer)
+    IEnumerator HuntAdventurer(CharacterController adventurer)
     {
         Debug.Log("start hunt");
         state = MinotaurState.Attack;
@@ -146,7 +146,7 @@ public class MinotaurController : MonoBehaviour
     }
 
     // Move minotaur from point start to end
-    IEnumerator GoToPlayer(Partition start, Partition end, AdventurerController adventurer)
+    IEnumerator GoToPlayer(Partition start, Partition end, CharacterController adventurer)
     {
         Debug.Log("start follow path");
         List<Partition> path = AStar.FindPath(start, end, new List<GameObject>(){ gameObject, adventurer.gameObject });
@@ -196,7 +196,7 @@ public class MinotaurController : MonoBehaviour
 
         foreach (Collider collider in hitObjects)
         {
-            AdventurerController adventurer = collider.GetComponent<AdventurerController>();
+            CharacterController adventurer = collider.GetComponent<CharacterController>();
             if (adventurer != null)
             {
                 adventurer.TakeDamage();

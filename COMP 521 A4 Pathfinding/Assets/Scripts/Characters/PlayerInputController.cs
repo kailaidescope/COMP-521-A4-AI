@@ -4,8 +4,8 @@ using UnityEngine;
 
 public class PlayerInputController : MonoBehaviour
 {
-    public AdventurerController adventurer1;
-    public AdventurerController adventurer2;
+    public CharacterController adventurer1;
+    public CharacterController adventurer2;
 
     private new Camera camera;
     private NavMesh navMesh;

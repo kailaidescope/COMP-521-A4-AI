@@ -5,9 +5,9 @@ using UnityEditor.AI;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class AdventurerController : MonoBehaviour
+public class CharacterController : MonoBehaviour
 {
-    public static List<AdventurerController> ADVENTURERS = new List<AdventurerController>();
+    public static List<CharacterController> ADVENTURERS = new List<CharacterController>();
     public static float SPEED = 2.5f;
     public static int RECALCULATE_BLOCKED_PATH_DISTANCE = 1;
     public static int MAX_HEALTH = 6;
