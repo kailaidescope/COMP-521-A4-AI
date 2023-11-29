@@ -4,7 +4,8 @@ using UnityEngine;
 
 public class PlayerInputController : MonoBehaviour
 {
-    public AdventurerController adventurer;
+    public AdventurerController adventurer1;
+    public AdventurerController adventurer2;
 
     private new Camera camera;
     private NavMesh navMesh;
@@ -26,7 +27,17 @@ public class PlayerInputController : MonoBehaviour
             
             if (Physics.Raycast(ray, out hit)) 
             {
-                adventurer.SetTarget(hit.point);
+                adventurer1.SetTarget(hit.point);
+            }
+        }
+        if (Input.GetKeyDown(KeyCode.Mouse1))
+        {
+            RaycastHit hit;
+            Ray ray = camera.ScreenPointToRay(Input.mousePosition);
+            
+            if (Physics.Raycast(ray, out hit)) 
+            {
+                adventurer2.SetTarget(hit.point);
             }
         }
     }
