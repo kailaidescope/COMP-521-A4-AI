@@ -73,6 +73,8 @@
     <Compile Include="Assets/Scripts/Navigation/Partition.cs" />
     <Compile Include="Assets/Scripts/TreasureController.cs" />
     <Compile Include="Assets/Scripts/HTN/Task.cs" />
+    <Compile Include="Assets/Scripts/HTN/CompositeTask.cs" />
+    <Compile Include="Assets/Scripts/HTN/BasicTask.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
