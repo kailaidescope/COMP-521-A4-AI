@@ -178,6 +178,26 @@ public class AStar
         return path;
     }
 
+    public static float FindPathDistance(Partition start, Partition goal, List<GameObject> ignoreObjects)
+    {
+        List<Partition> path = AStar.FindPath(start, goal, ignoreObjects);
+
+        if (path == null)
+        {
+            return -1;
+        } else
+        {
+            float dist = 0;
+
+            for (int i = 0; i < path.Count-1; i++)
+            {
+                dist += path[i].GetDistanceToConnectedPartition(path[i+1]);
+            }
+
+            return dist;
+        }
+    }
+
     // Calculates heuristic distance between two points on an octile grid
     public static float OctileHeuristic(Partition current, Partition goal)
     {

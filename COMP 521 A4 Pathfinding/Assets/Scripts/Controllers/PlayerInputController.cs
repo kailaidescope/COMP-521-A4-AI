@@ -34,6 +34,16 @@ public class PlayerInputController : MonoBehaviour
             {
                 adventurer2.StartMoveToTreasure();
             }
+        } else if (Input.GetKey(KeyCode.Alpha2))
+        {
+            if (Input.GetKeyDown(KeyCode.Mouse0))
+            {
+                adventurer1.StartFleeMinotaur();
+            }
+            if (Input.GetKeyDown(KeyCode.Mouse1))
+            {
+                adventurer2.StartFleeMinotaur();
+            }
         } else
         {
             if (Input.GetKeyDown(KeyCode.Mouse0))

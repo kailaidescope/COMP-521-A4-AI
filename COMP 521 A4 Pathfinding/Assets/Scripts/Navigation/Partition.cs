@@ -20,6 +20,21 @@ public class Partition : MonoBehaviour
         return edges;
     }
 
+    public float GetDistanceToConnectedPartition(Partition p)
+    {
+        if (p == this) { return 0; }
+
+        foreach (Edge e in edges)
+        {
+            if (e.a == p || e.b == p)
+            {
+                return e.distance;
+            }
+        }
+
+        return -1;
+    }
+
     public UnityEngine.GameObject GetOccupied() { return occupied; }
     public Partition SetOccupied(UnityEngine.GameObject g) { occupied = g; return this; }
 

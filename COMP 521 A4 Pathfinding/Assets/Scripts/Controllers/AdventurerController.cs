@@ -11,6 +11,7 @@ public class AdventurerController : MonoBehaviour
     public static Color MELEE_COLOR = Color.red;
     public static Color RANGED_COLOR = Color.white;
     public static float FLEE_DISTANCE = MinotaurController.AGRO_DISTANCE * 2;
+    public static float FLEE_ATTEMPT_DISTANCE = 10;
     public static float PICKUP_TREASURE_DISTANCE = 1f;
     public static float HEIGHT_OFFSET_TO_GROUND = -1;
     public static int RECALCULATE_BLOCKED_PATH_DISTANCE = 2;
@@ -86,9 +87,58 @@ public class AdventurerController : MonoBehaviour
         CompositeTask claimTreasure = new CompositeTask(new List<List<Task>>{ new List<Task>(){ moveToTreasure } }, pre, post);
     }
 
-    void StartFleeMinotaur()
+    public void StartFleeMinotaur()
     {
+        StopAllCoroutines();
+        StartCoroutine(FleeMinotaur());
+    }
+
+    IEnumerator FleeMinotaur()
+    {
+        int rotations = 8;
+
+        Vector3 fleePoint = Vector3.forward * FLEE_ATTEMPT_DISTANCE;
+        Vector3 bestFleePoint = Vector3.zero;
+        float bestDistDiff = 2;
         
+        for (int i = 0; i < rotations; i++)
+        {
+            try
+            {
+                Partition goal = navMesh.GetPartition(transform.position + fleePoint);
+
+                float adventurerDistance = AStar.FindPathDistance(navMesh.GetPartition(transform.position), goal, new List<GameObject>(){ gameObject });
+                float minotaurDistance = AStar.FindPathDistance(navMesh.GetPartition(MinotaurController.MINOTAUR.transform.position), goal, new List<GameObject>(){ gameObject });
+
+                // Check if path exists
+                if (adventurerDistance != -1)
+                {
+                    float thisDistDiff = minotaurDistance - adventurerDistance;
+                    if ( bestDistDiff < thisDistDiff)
+                    {
+                        bestFleePoint = fleePoint;
+                        bestDistDiff = thisDistDiff;
+                    }
+                }
+            } catch(Exception e)
+            {
+                Debug.Log("Exception caught: "+e);
+            }
+
+            fleePoint = Quaternion.AngleAxis(360/rotations, Vector3.up) * fleePoint;
+        }
+
+        // Check if valid point was found
+        if(bestDistDiff == 2)
+        {
+            // Recalculate plan here
+            yield break;
+        }
+
+        Partition end = navMesh.GetPartition(transform.position + bestFleePoint);
+        List<Partition> path = AStar.FindPath(navMesh.GetPartition(transform.position), end, gameObject);
+
+        yield return StartCoroutine(MoveOnPath(path, end));
     }
 
     public void StartMoveToTreasure()
@@ -103,6 +153,11 @@ public class AdventurerController : MonoBehaviour
         Partition end = adjToTreasure[UnityEngine.Random.Range(0, adjToTreasure.Count)];
         List<Partition> path = AStar.FindPath(navMesh.GetPartition(transform.position), end, gameObject);
 
+        yield return StartCoroutine(MoveOnPath(path, end));
+    }
+
+    IEnumerator MoveOnPath(List<Partition> path, Partition end)
+    {
         if (path == null)
         {
             // Should recalculate plan here
