@@ -31,15 +31,6 @@ public class CharacterController : MonoBehaviour
         
     }
 
-    public void TakeDamage()
-    {
-        healthBar.value -= 1;
-        if (healthBar.value == 0)
-        {
-            gameObject.SetActive(false);
-        }
-    }
-
     // Move minotaur from point start to end
     IEnumerator FollowPath(Partition start, Partition end)
     {

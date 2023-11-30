@@ -91,7 +91,7 @@ public class MinotaurController : MonoBehaviour
             AdventurerController closestAdventurerToMinotaur = null;
             float closestAdventurerToMinotaurDist = -1;
 
-            foreach (AdventurerController adventurer in AdventurerController.ADVENTURERS)
+            foreach (AdventurerController adventurer in AdventurerController.LIVING_ADVENTURERS)
             {
                 float distanceToTreasure = Vector3.Distance(adventurer.transform.position, treasure.transform.position);
                 if (adventurer.gameObject.activeSelf && distanceToTreasure <= AGRO_DISTANCE)

@@ -6,7 +6,8 @@ public struct StateVector
 {
     public StateVector(int health, float dist_minotaur, float dist_treasure, float dist_corner, 
                         float seconds_attack, float seconds_damaged, float seconds_dropped_treasure, 
-                        bool line_of_sight, AdventurerController treasure_holder, AdventurerController minotaur_target)
+                        bool line_of_sight, AdventurerController treasure_holder, AdventurerController minotaur_target,
+                        List<AdventurerController> living_adventurers)
     {
         this.health = health;
         this.dist_minotaur = dist_minotaur;
@@ -18,6 +19,7 @@ public struct StateVector
         this.line_of_sight = line_of_sight;
         this.treasure_holder = treasure_holder;
         this.minotaur_target = minotaur_target;
+        this.living_adventurers = living_adventurers;
     }
 
     // Integers
@@ -37,4 +39,7 @@ public struct StateVector
     // GameObjects    
     public AdventurerController treasure_holder;
     public AdventurerController minotaur_target;
+
+    // Lists of GameObjects
+    public List<AdventurerController> living_adventurers;
 }

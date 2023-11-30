@@ -1340,6 +1340,7 @@ MonoBehaviour:
   - {fileID: 7009640746866452790}
   - {fileID: 4306065225865244161}
   - {fileID: 8317840678997369419}
+  healthBar: {fileID: 7255472909696167853}
 --- !u!114 &7069167960336904744
 MonoBehaviour:
   m_ObjectHideFlags: 0

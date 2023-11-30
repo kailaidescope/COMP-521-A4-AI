@@ -4,10 +4,11 @@ using System.Collections.Generic;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class AdventurerController : MonoBehaviour
 {
-    public static List<AdventurerController> ADVENTURERS = new List<AdventurerController>();
+    public static List<AdventurerController> LIVING_ADVENTURERS = new List<AdventurerController>();
     public static Color MELEE_COLOR = Color.red;
     public static Color RANGED_COLOR = Color.white;
     public static float FLEE_DISTANCE = MinotaurController.AGRO_DISTANCE * 2;
@@ -16,9 +17,11 @@ public class AdventurerController : MonoBehaviour
     public static float HEIGHT_OFFSET_TO_GROUND = -1;
     public static int RECALCULATE_BLOCKED_PATH_DISTANCE = 2;
     public static float SPEED = MinotaurController.SPEED / 2;
+    public static int MAX_HEALTH = 6;
 
     public AdventurerType adventurerType;
     public TextMeshProUGUI[] texts = new TextMeshProUGUI[10];
+    public Slider healthBar;
 
     private SpriteRenderer spriteRenderer;
     private CharacterController characterController;
@@ -29,7 +32,7 @@ public class AdventurerController : MonoBehaviour
 
     void Awake()
     {
-        ADVENTURERS.Add(this);
+        LIVING_ADVENTURERS.Add(this);
     }
 
     // Start is called before the first frame update
@@ -39,6 +42,7 @@ public class AdventurerController : MonoBehaviour
         spriteRenderer.color = (adventurerType == AdventurerType.MELEE)? MELEE_COLOR : RANGED_COLOR;
         characterController = GetComponent<CharacterController>();
         navMesh = FindObjectOfType<NavMesh>();
+        healthBar.value = MAX_HEALTH;
 
         if (adventurerType == AdventurerType.MELEE)
         {
@@ -211,7 +215,7 @@ public class AdventurerController : MonoBehaviour
         StateVector newState = new StateVector((int) characterController.healthBar.value, Vector3.Distance(transform.position, MinotaurController.MINOTAUR.transform.position), 
                                 Vector3.Distance(transform.position, TreasureController.TREASURE.transform.position), closestCornerDistance, currentState.seconds_attack + Time.deltaTime, 
                                 currentState.seconds_damaged + Time.deltaTime, currentState.seconds_dropped_treasure + Time.deltaTime, hit.rigidbody != null && hit.rigidbody.gameObject == MinotaurController.MINOTAUR.gameObject,
-                                TreasureController.TREASURE.GetHolder(), MinotaurController.MINOTAUR.GetCurrentTarget());
+                                TreasureController.TREASURE.GetHolder(), MinotaurController.MINOTAUR.GetCurrentTarget(), LIVING_ADVENTURERS);
 
         texts[0].text = "Health: "+newState.health;
         texts[1].text = "Dist Mino: "+(int)newState.dist_minotaur;
@@ -292,7 +296,11 @@ public class AdventurerController : MonoBehaviour
 
     public void TakeDamage()
     {
-        characterController.TakeDamage();
+        healthBar.value -= 1;
+        if (healthBar.value == 0)
+        {
+            gameObject.SetActive(false);
+        }
     }
 
     public enum AdventurerType
