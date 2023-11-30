@@ -69,7 +69,7 @@ public class MinotaurController : MonoBehaviour
     // Calculates the highest priority target, if there is any
     IEnumerator GetAttackPriority()
     {
-        Debug.Log("Getting target");
+        //Debug.Log("Getting target");
         if (lastAttackedBy != null && secondsSinceTookDmg > FORGET_LAST_ATTACKER_COOLDOWN)
         {
             lastAttackedBy = null;
@@ -134,7 +134,7 @@ public class MinotaurController : MonoBehaviour
             }
         }
 
-        Debug.Log("Current target = "+currentTarget + ", Last target = "+lastTarget);
+        //Debug.Log("Current target = "+currentTarget + ", Last target = "+lastTarget);
         yield return new WaitForSeconds(RECALCULATE_TARGET_DELAY);
         StartCoroutine(GetAttackPriority());
     }
@@ -142,7 +142,7 @@ public class MinotaurController : MonoBehaviour
     // Make minotaur chase an adventurer
     IEnumerator HuntAdventurer(AdventurerController adventurer)
     {
-        Debug.Log("start hunt");
+        //Debug.Log("start hunt");
 
         while(true)
         {
@@ -153,7 +153,7 @@ public class MinotaurController : MonoBehaviour
     // Move minotaur from point start to end
     IEnumerator GoToPlayer(Partition start, Partition end, AdventurerController adventurer)
     {
-        Debug.Log("start follow path");
+        //Debug.Log("start follow path");
         List<Partition> path = AStar.FindPath(start, end, new List<UnityEngine.GameObject>() { gameObject, adventurer.gameObject });
 
         if (path == null)
@@ -185,15 +185,15 @@ public class MinotaurController : MonoBehaviour
             HandleBlockedPath(path, end);
             MoveAlongPath(path);
             DrawDebugPath(path, Color.red);
-            Debug.Log("following path");
+            //Debug.Log("following path");
             yield return null;
         }
-        Debug.Log("end follow path");
+        //Debug.Log("end follow path");
     }
 
     IEnumerator Attack()
     {
-        Debug.Log("attacking");
+        //Debug.Log("attacking");
         attackDisplay.gameObject.SetActive(true);
         secondsSinceLastAttack = 0;
 
@@ -215,7 +215,7 @@ public class MinotaurController : MonoBehaviour
     // Make minotaur circle the treasure on a loop
     IEnumerator GuardTreasure()
     {
-        Debug.Log("guarding");
+        //Debug.Log("guarding");
         Vector3 lastTreasurePos = treasure.transform.position;
         List<Partition> points = GeneratePatrolPoints(2);
 

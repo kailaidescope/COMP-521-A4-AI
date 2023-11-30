@@ -12,6 +12,9 @@ public class AdventurerController : MonoBehaviour
     public static Color RANGED_COLOR = Color.white;
     public static float FLEE_DISTANCE = MinotaurController.AGRO_DISTANCE * 2;
     public static float PICKUP_TREASURE_DISTANCE = 1f;
+    public static float HEIGHT_OFFSET_TO_GROUND = -1;
+    public static int RECALCULATE_BLOCKED_PATH_DISTANCE = 2;
+    public static float SPEED = MinotaurController.SPEED / 2;
 
     public AdventurerType adventurerType;
     public TextMeshProUGUI[] texts = new TextMeshProUGUI[10];
@@ -21,6 +24,7 @@ public class AdventurerController : MonoBehaviour
     private Task headTask;
     private List<BasicTask> plan;
     private StateVector currentState;
+    private NavMesh navMesh;
 
     void Awake()
     {
@@ -33,13 +37,14 @@ public class AdventurerController : MonoBehaviour
         spriteRenderer = GetComponent<SpriteRenderer>();
         spriteRenderer.color = (adventurerType == AdventurerType.MELEE)? MELEE_COLOR : RANGED_COLOR;
         characterController = GetComponent<CharacterController>();
+        navMesh = FindObjectOfType<NavMesh>();
 
         if (adventurerType == AdventurerType.MELEE)
         {
-
+            InitMeleeHTN();
         } else 
         {
-
+            InitRangedHTN();
         }
     }
 
@@ -54,21 +59,70 @@ public class AdventurerController : MonoBehaviour
         pre = (StateVector state) => { return state.dist_treasure < FLEE_DISTANCE; };
         post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
         BasicTask moveToTreasure = new BasicTask(StartMoveToTreasure, "Moving to treasure", pre, post);
+
+        // Claim Treasure
+        // Method 0: Move to Treasure
+        pre = (StateVector state) => { return state.dist_treasure < FLEE_DISTANCE; };
+        post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
+        CompositeTask claimTreasure = new CompositeTask(new List<List<Task>>{ new List<Task>(){ moveToTreasure } }, pre, post);
     }
 
     void InitRangedHTN()
     {
+        // Flee Minotaur
+        Func<StateVector, bool> pre = (StateVector state) => { return state.dist_minotaur < FLEE_DISTANCE; };
+        Func<StateVector, StateVector> post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
+        BasicTask fleeMinotaur = new BasicTask(StartFleeMinotaur, "Fleeing minotaur", pre, post);
 
+        // Move to Treasure
+        pre = (StateVector state) => { return state.dist_treasure < FLEE_DISTANCE; };
+        post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
+        BasicTask moveToTreasure = new BasicTask(StartMoveToTreasure, "Moving to treasure", pre, post);
+
+        // Claim Treasure
+        // Method 0: Move to Treasure
+        pre = (StateVector state) => { return state.dist_treasure < FLEE_DISTANCE; };
+        post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
+        CompositeTask claimTreasure = new CompositeTask(new List<List<Task>>{ new List<Task>(){ moveToTreasure } }, pre, post);
     }
 
     void StartFleeMinotaur()
     {
-
+        
     }
 
-    void StartMoveToTreasure()
+    public void StartMoveToTreasure()
     {
+        StopAllCoroutines();
+        StartCoroutine(MoveToTreasure());
+    }
 
+    IEnumerator MoveToTreasure()
+    {
+        List<Partition> adjToTreasure = navMesh.GetPartition(TreasureController.TREASURE.transform.position).GetConnectedPartitions();
+        Partition end = adjToTreasure[UnityEngine.Random.Range(0, adjToTreasure.Count)];
+        List<Partition> path = AStar.FindPath(navMesh.GetPartition(transform.position), end, gameObject);
+
+        if (path == null)
+        {
+            // Should recalculate plan here
+            yield break;
+        }
+
+        yield return null;
+
+        Vector3 nextPathPos = path[0].GetPosition() - path[0].GetPosition().y * Vector3.up + transform.position.y * Vector3.up;
+
+        while (!(path.Count == 1 && Vector3.Distance(transform.position, nextPathPos) < 0.001))
+        {
+            HandleBlockedPath(path, end);
+            MoveAlongPath(path);
+            DrawDebugPath(path, Color.red);
+            nextPathPos = path[0].GetPosition() - path[0].GetPosition().y * Vector3.up + transform.position.y * Vector3.up;
+            //Debug.Log("follow path 2");
+            yield return null;
+        }
+        //Debug.Log("end follow path");
     }
 
 
@@ -80,10 +134,29 @@ public class AdventurerController : MonoBehaviour
 
     void UpdateCurrentState()
     {
+        RaycastHit hit;
+        Ray ray = new Ray(gameObject.transform.position + HEIGHT_OFFSET_TO_GROUND * Vector3.up, MinotaurController.MINOTAUR.gameObject.transform.position - gameObject.transform.position);
+        Physics.Raycast(ray, out hit, 40, -1, QueryTriggerInteraction.Ignore);
+        //Debug.DrawLine(ray.origin, ray.direction * hit.distance, Color.green);
+
+        Partition closestCorner = null;
+        float closestCornerDistance = -1;
+
+        foreach (Partition corner in navMesh.GetCorners())
+        {
+            float distance = Vector3.Distance(transform.position + HEIGHT_OFFSET_TO_GROUND * Vector3.up, corner.GetPosition());
+
+            if (closestCorner == null || closestCornerDistance > distance)
+            {
+                closestCorner = corner;
+                closestCornerDistance = distance;
+            }
+        }
+
         StateVector newState = new StateVector((int) characterController.healthBar.value, Vector3.Distance(transform.position, MinotaurController.MINOTAUR.transform.position), 
-                                Vector3.Distance(transform.position, TreasureController.TREASURE.transform.position), 0, currentState.seconds_attack + Time.deltaTime, 
-                                currentState.seconds_damaged + Time.deltaTime, currentState.seconds_dropped_treasure + Time.deltaTime, true, TreasureController.TREASURE.GetHolder(), 
-                                MinotaurController.MINOTAUR.GetCurrentTarget());
+                                Vector3.Distance(transform.position, TreasureController.TREASURE.transform.position), closestCornerDistance, currentState.seconds_attack + Time.deltaTime, 
+                                currentState.seconds_damaged + Time.deltaTime, currentState.seconds_dropped_treasure + Time.deltaTime, hit.rigidbody != null && hit.rigidbody.gameObject == MinotaurController.MINOTAUR.gameObject,
+                                TreasureController.TREASURE.GetHolder(), MinotaurController.MINOTAUR.GetCurrentTarget());
 
         texts[0].text = "Health: "+newState.health;
         texts[1].text = "Dist Mino: "+(int)newState.dist_minotaur;
@@ -97,6 +170,69 @@ public class AdventurerController : MonoBehaviour
         texts[9].text = "Min Trg: "+newState.minotaur_target;
 
         currentState = newState;
+    }
+
+    // Handles movement towards target
+    void MoveAlongPath(List<Partition> curPath)
+    {
+        if (curPath != null && curPath.Count > 0)
+        {
+            Vector3 nextPathPos = curPath[0].GetPosition() - curPath[0].GetPosition().y * Vector3.up + transform.position.y * Vector3.up;
+
+            // Check if the position of the human and the next point on the path are approximately equal.
+            if (Vector3.Distance(transform.position, nextPathPos) < 0.001f)
+            {
+                transform.position = nextPathPos;
+                curPath.RemoveAt(0);
+            }
+
+            if (curPath.Count > 0)
+            {
+                // Move position a step closer to the target.
+                var step =  SPEED * Time.deltaTime; // calculate distance to move
+                
+                transform.position = Vector3.MoveTowards(transform.position, nextPathPos, step);
+            }
+        }
+    }
+
+    // Recalculates path when position of target changes or path is blocked
+    void HandleBlockedPath(List<Partition> curPath, Partition target)
+    {
+        bool blocked = false;
+        if (curPath != null)
+        {
+            for (int i = 0; i < Mathf.Min(curPath.Count, RECALCULATE_BLOCKED_PATH_DISTANCE + 1); i++)
+        {
+            if (curPath[i].GetOccupied() != null && curPath[i].GetOccupied() != gameObject)
+            {
+                blocked = true;
+            }
+        }
+        }
+        
+
+        if (blocked || curPath == null)
+        {
+            RecalculatePath(curPath, target);
+        }
+    }
+
+    void RecalculatePath(List<Partition> curPath, Partition target)
+    {
+        curPath = AStar.FindPath(navMesh.GetPartition(transform.position), target, gameObject);
+    }
+
+    // Draws path in scene view
+    void DrawDebugPath(List<Partition> curPath, Color color)
+    {
+        if (curPath != null) 
+        {
+            for(int i = 0; i < curPath.Count-1; i++)
+            {
+                Debug.DrawLine(curPath[i].GetPosition(), curPath[i+1].GetPosition(), color);
+            }
+        }
     }
 
     public void TakeDamage()

@@ -7,12 +7,11 @@ using UnityEngine.ProBuilder;
 public class NavMesh : MonoBehaviour
 {
     public UnityEngine.GameObject partitionPrefab;
-    public Transform startTransform;
-    public Transform endTransform;
     public Vector2[] referencePlaneCorners = new Vector2[2];
     [SerializeField] float height;
 
     private List<List<Partition>> partitions;
+    private List<Partition> corners;
     float xStorageOffset;
     float zStorageOffset;
 
@@ -51,6 +50,7 @@ public class NavMesh : MonoBehaviour
     void GenerateNavMesh()
     {
         partitions = new List<List<Partition>>();
+        corners = new List<Partition>();
 
         float minx = Mathf.Min(referencePlaneCorners[0].x, referencePlaneCorners[1].x);
         float maxx = Mathf.Max(referencePlaneCorners[0].x, referencePlaneCorners[1].x) - 1;
@@ -103,19 +103,11 @@ public class NavMesh : MonoBehaviour
                 }
             }
         }
-    }
 
-    void CaclulateAndDrawDummyPath()
-    {
-        Partition pStart = GetPartition(startTransform.position);
-        Partition pEnd = GetPartition(endTransform.position);
-
-        var path = AStar.FindPath(pStart, pEnd);
-        
-        for(int i = 0; i < path.Count-1; i++)
-        {
-            Debug.DrawLine(path[i].GetPosition(), path[i+1].GetPosition(), Color.red, 0.5f);
-        }
+        corners.Add(partitions[partitions.Count-1][partitions[partitions.Count-1].Count-1]);
+        corners.Add(partitions[partitions.Count-1][0]);
+        corners.Add(partitions[0][partitions[0].Count-1]);
+        corners.Add(partitions[0][0]);
     }
 
     void DrawOccupiedPartitions()
@@ -154,9 +146,40 @@ public class NavMesh : MonoBehaviour
         return partitions;
     }
 
-    public Transform GetGoal()
+    public List<Partition> GetCorners()
     {
-        return endTransform;
+        return corners;
+    }
+
+    // Simple breadth-first search to find nearest unoccupied partition
+    // Does not count ignoreObjects elements as occupying space
+    public Partition GetNearestUnoccupiedPartition(Partition start, List<GameObject> ignoreObjects)
+    {
+        List<Partition> searchedParts = new List<Partition>();
+        Queue<Partition> partitionsToSearch = new Queue<Partition>();
+        partitionsToSearch.Enqueue(start);
+        Partition currentPart;
+
+        while (partitionsToSearch.Count > 0)
+        {
+            currentPart = partitionsToSearch.Dequeue();
+
+            if (currentPart.GetOccupied() == null || ignoreObjects.Contains(currentPart.GetOccupied()))
+            {
+                return currentPart;
+            }
+
+            List<Partition> adjacentParts = currentPart.GetConnectedPartitions();
+
+            foreach(Partition p in adjacentParts)
+            {
+                partitionsToSearch.Enqueue(p);
+            }
+
+            searchedParts.Add(currentPart);
+        }
+
+        return null;
     }
 
     void OnDrawGizmosSelected()
