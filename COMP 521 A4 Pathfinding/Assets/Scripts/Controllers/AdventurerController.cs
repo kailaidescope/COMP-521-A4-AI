@@ -20,13 +20,14 @@ public class AdventurerController : MonoBehaviour
     public static int MAX_HEALTH = 6;
 
     public AdventurerType adventurerType;
-    public TextMeshProUGUI[] texts = new TextMeshProUGUI[10];
+    public TextMeshProUGUI[] texts = new TextMeshProUGUI[12];
     public Slider healthBar;
 
     private SpriteRenderer spriteRenderer;
     private CharacterController characterController;
     private Task headTask;
     private List<BasicTask> plan;
+    private BasicTask currentTask;
     private StateVector currentState;
     private NavMesh navMesh;
 
@@ -53,6 +54,9 @@ public class AdventurerController : MonoBehaviour
         {
             //InitRangedHTN();
         }
+
+        UpdateCurrentState();
+        plan = HTN.GeneratePlan(currentState, headTask);
     }
 
     void InitMeleeHTN()
@@ -60,12 +64,12 @@ public class AdventurerController : MonoBehaviour
         // Flee Minotaur
         Func<StateVector, bool> pre = (StateVector state) => { return state.dist_minotaur < FLEE_DISTANCE; };
         Func<StateVector, StateVector> post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
-        BasicTask fleeMinotaur = new BasicTask(StartFleeMinotaur, "Fleeing minotaur", pre, post);
+        BasicTask fleeMinotaur = new BasicTask(StartFleeMinotaur, "Flee minotaur", pre, post);
 
         // Move to Treasure
         pre = (StateVector state) => { return state.dist_treasure < FLEE_DISTANCE; };
         post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
-        BasicTask moveToTreasure = new BasicTask(StartMoveToTreasure, "Moving to treasure", pre, post);
+        BasicTask moveToTreasure = new BasicTask(StartMoveToTreasure, "Move to treasure", pre, post);
 
         // Claim Treasure
         // Method 0: Move to Treasure
@@ -101,6 +105,8 @@ public class AdventurerController : MonoBehaviour
             return meths;
         };
         CompositeTask beMelee = new CompositeTask(methods, methodSelector);
+
+        headTask = beMelee;
     }
 
     void InitRangedHTN()
@@ -160,6 +166,8 @@ public class AdventurerController : MonoBehaviour
         List<Partition> path = AStar.FindPath(navMesh.GetPartition(transform.position), end, gameObject);
 
         yield return StartCoroutine(FollowPath(path, end));
+
+        currentTask = null;
     }
 
     public void StartMoveToTreasure()
@@ -175,6 +183,8 @@ public class AdventurerController : MonoBehaviour
         List<Partition> path = AStar.FindPath(navMesh.GetPartition(transform.position), end, gameObject);
 
         yield return StartCoroutine(FollowPath(path, end));
+
+        currentTask = null;
     }
 
     IEnumerator FollowPath(List<Partition> path, Partition end)
@@ -206,6 +216,25 @@ public class AdventurerController : MonoBehaviour
     void Update()
     {
         UpdateCurrentState();
+
+        if (plan != null)
+        {
+            if (plan.Count < 1 && currentTask == null)
+            {
+                plan = HTN.GeneratePlan(currentState, headTask);
+
+                if (plan.Count < 1)
+                {
+                    StartCoroutine(IdleAndReplan());
+                }
+            } else if (currentTask == null)
+            {
+                currentTask = plan[0];
+                plan.RemoveAt(0);
+
+                currentTask._operator();
+            }
+        }
     }
 
     void UpdateCurrentState()
@@ -234,6 +263,7 @@ public class AdventurerController : MonoBehaviour
                                 currentState.seconds_damaged + Time.deltaTime, currentState.seconds_dropped_treasure + Time.deltaTime, hit.rigidbody != null && hit.rigidbody.gameObject == MinotaurController.MINOTAUR.gameObject,
                                 TreasureController.TREASURE.GetHolder(), MinotaurController.MINOTAUR.GetCurrentTarget(), LIVING_ADVENTURERS);
 
+        // Display world state
         texts[0].text = "Health: "+newState.health;
         texts[1].text = "Dist Mino: "+(int)newState.dist_minotaur;
         texts[2].text = "Dist Tre: "+(int)newState.dist_treasure;
@@ -245,7 +275,35 @@ public class AdventurerController : MonoBehaviour
         texts[8].text = "Tre Hold: "+newState.treasure_holder;
         texts[9].text = "Min Trg: "+newState.minotaur_target;
 
+        // Display current plan
+        String currentTaskDescription = "";
+        if (currentTask != null)
+        {
+            currentTaskDescription = currentTask.description;
+        }
+        texts[10].text = "Current task: "+ currentTaskDescription;
+        
+        String taskList = "";
+        if (plan != null)
+        {
+            foreach (BasicTask basicTask in plan)
+            {
+                taskList = taskList + basicTask.description + ", ";
+            }
+        }
+        texts[11].text = "Plan: "+taskList;
+
         currentState = newState;
+    }
+
+    // Waits to calculate a new plan
+    IEnumerator IdleAndReplan()
+    {
+        plan = null;
+
+        yield return new WaitForSeconds(2);
+
+        plan = new List<BasicTask>();
     }
 
     // Handles movement towards target

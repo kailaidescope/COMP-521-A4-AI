@@ -77,6 +77,7 @@
     <Compile Include="Assets/Scripts/Controllers/PlayerInputController.cs" />
     <Compile Include="Assets/Scripts/Navigation/Edge.cs" />
     <Compile Include="Assets/Scripts/Navigation/Partition.cs" />
+    <Compile Include="Assets/Scripts/HTN/PlannerState.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets/TextMesh Pro/Shaders/TMPro.cginc" />
