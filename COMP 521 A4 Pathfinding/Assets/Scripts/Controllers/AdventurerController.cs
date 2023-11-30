@@ -53,6 +53,7 @@ public class AdventurerController : MonoBehaviour
             InitMeleeHTN();
         } else 
         {
+            healthBar.value = MAX_HEALTH/2;
             InitRangedHTN();
         }
 
@@ -412,7 +413,6 @@ public class AdventurerController : MonoBehaviour
 
     IEnumerator MoveToAttack_Ranged()
     {
-
 
         int rotations = 16;
 
