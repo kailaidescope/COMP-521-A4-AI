@@ -8,7 +8,7 @@ using UnityEngine;
 
 public class MinotaurController : MonoBehaviour
 {
-    public static float SPEED = 5f;
+    public static float SPEED = 3.75f;
     public static int RECALCULATE_BLOCKED_PATH_DISTANCE = 1;
     public static float AGRO_DISTANCE = 5;
     public static float ATTACK_RADIUS = 2;
@@ -69,7 +69,7 @@ public class MinotaurController : MonoBehaviour
     // Calculates the highest priority target, if there is any
     IEnumerator GetAttackPriority()
     {
-        //Debug.Log("Getting target");
+        Debug.Log("Getting target");
         if (lastAttackedBy != null && secondsSinceTookDmg > FORGET_LAST_ATTACKER_COOLDOWN)
         {
             lastAttackedBy = null;
@@ -142,7 +142,7 @@ public class MinotaurController : MonoBehaviour
     // Make minotaur chase an adventurer
     IEnumerator HuntAdventurer(AdventurerController adventurer)
     {
-        //Debug.Log("start hunt");
+        Debug.Log("start hunt");
 
         while(true)
         {
@@ -220,7 +220,7 @@ public class MinotaurController : MonoBehaviour
     // Make minotaur circle the treasure on a loop
     IEnumerator GuardTreasure()
     {
-        //Debug.Log("guarding");
+        Debug.Log("guarding");
         Vector3 lastTreasurePos = treasure.transform.position;
         List<Partition> points = GeneratePatrolPoints(2);
 
@@ -383,6 +383,12 @@ public class MinotaurController : MonoBehaviour
                 Debug.DrawLine(curPath[i].GetPosition(), curPath[i+1].GetPosition(), color);
             }
         }
+    }
+
+    public void Attack(AdventurerController adventurerController)
+    {
+        lastAttackedBy = adventurerController;
+        secondsSinceTookDmg = 0;
     }
 
     public List<Partition> GetPath()

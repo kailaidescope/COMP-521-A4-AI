@@ -22,6 +22,8 @@ public class HTN
         {
             Task currentTask = tasksToProcess.Pop();
 
+            //Debug.Log("Task in planning: "+currentTask);
+
             // If task is composite
             if(currentTask.GetType() == typeof(CompositeTask))
             {
@@ -77,4 +79,30 @@ public class HTN
         return finalPlan;
     }
 
+    public static bool DoesPlanStillWork(StateVector currentState, BasicTask currentTask, List<BasicTask> tasks)
+    {
+        if (currentTask != null)
+        {
+            if (currentTask.CheckPreconditions(currentState))
+            {
+                currentState = currentTask.ApplyPostconditions(currentState);
+            } else
+            {
+                return false;
+            }
+        }
+
+        foreach (BasicTask task in tasks)
+        {
+            if (task.CheckPreconditions(currentState))
+            {
+                currentState = task.ApplyPostconditions(currentState);
+            } else
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

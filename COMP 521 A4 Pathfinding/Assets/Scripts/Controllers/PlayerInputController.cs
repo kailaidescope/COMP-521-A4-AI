@@ -1,11 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class PlayerInputController : MonoBehaviour
 {
+    public static TextMeshProUGUI VICTORY_TEXT;
+
     public CharacterController character1;
     public CharacterController character2;
+    public TextMeshProUGUI victoryText;
 
     private new Camera camera;
     private NavMesh navMesh;
@@ -19,6 +23,9 @@ public class PlayerInputController : MonoBehaviour
         navMesh = FindObjectOfType<NavMesh>();
         adventurer1 = character1.gameObject.GetComponent<AdventurerController>();
         adventurer2 = character2.gameObject.GetComponent<AdventurerController>();
+
+        VICTORY_TEXT = victoryText;
+        victoryText.gameObject.SetActive(false);
     }
 
     // Update is called once per frame

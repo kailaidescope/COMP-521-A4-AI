@@ -11,13 +11,16 @@ public class AdventurerController : MonoBehaviour
     public static List<AdventurerController> LIVING_ADVENTURERS = new List<AdventurerController>();
     public static Color MELEE_COLOR = Color.red;
     public static Color RANGED_COLOR = Color.white;
-    public static float FLEE_DISTANCE = MinotaurController.AGRO_DISTANCE * 2;
+    public static float FLEE_DISTANCE = 10;
     public static float FLEE_ATTEMPT_DISTANCE = 10;
-    public static float PICKUP_TREASURE_DISTANCE = 1f;
+    public static float INTERACT_WITH_OBJECT_DISTANCE = 1f;
     public static float HEIGHT_OFFSET_TO_GROUND = -1;
     public static int RECALCULATE_BLOCKED_PATH_DISTANCE = 2;
-    public static float SPEED = MinotaurController.SPEED / 2;
+    public static float SPEED = 3;
     public static int MAX_HEALTH = 6;
+    public static int PICKUP_TREASURE_DELAY = 3;
+    public static int ATTACK_COOLDOWN = 1;
+    public static float RANGED_IDEAL_ATTACK_DIST = 15;
 
     public AdventurerType adventurerType;
     public TextMeshProUGUI[] texts = new TextMeshProUGUI[12];
@@ -45,14 +48,12 @@ public class AdventurerController : MonoBehaviour
         navMesh = FindObjectOfType<NavMesh>();
         healthBar.value = MAX_HEALTH;
 
-        InitMeleeHTN();
-
         if (adventurerType == AdventurerType.MELEE)
         {
-            //InitMeleeHTN();
+            InitMeleeHTN();
         } else 
         {
-            //InitRangedHTN();
+            InitRangedHTN();
         }
 
         UpdateCurrentState();
@@ -71,9 +72,21 @@ public class AdventurerController : MonoBehaviour
         post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
         BasicTask moveToTreasure = new BasicTask(StartMoveToTreasure, "Move to treasure", pre, post);
 
+        // Grab Treasure
+        pre = (StateVector state) => { return state.seconds_dropped_treasure > PICKUP_TREASURE_DELAY && state.dist_treasure <= INTERACT_WITH_OBJECT_DISTANCE; };
+        post = (StateVector state) => { state.treasure_holder = this; return state; };
+        BasicTask grabTreasure = new BasicTask(StartGrabTreasure, "Grab treasure", pre, post);
+
+        // Move to Corner
+        pre = (StateVector state) => { return state.dist_corner > INTERACT_WITH_OBJECT_DISTANCE && state.treasure_holder == this; };
+        post = (StateVector state) => { state.dist_corner = INTERACT_WITH_OBJECT_DISTANCE; return state; };
+        BasicTask moveToCorner = new BasicTask(StartMoveToCorner, "Move to corner", pre, post);
+
         // Claim Treasure
         // Method 0: Move to Treasure
-        List<List<Task>> methods = new List<List<Task>>{ new List<Task>(){ moveToTreasure } };
+        // Method 1: Grab treasure
+        // Method 2: Move to corner (to claim victory)
+        List<List<Task>> methods = new List<List<Task>>{ new List<Task>(){ moveToTreasure }, new List<Task>(){ grabTreasure }, new List<Task>(){ moveToCorner } };
         Func<StateVector, List<List<Task>>> methodSelector = (StateVector state) => 
         { 
             if(state.treasure_holder == null){
@@ -85,10 +98,46 @@ public class AdventurerController : MonoBehaviour
         };
         CompositeTask claimTreasure = new CompositeTask(methods, methodSelector);
 
+        // Move to Attack
+        pre = (StateVector state) => { return state.dist_minotaur > INTERACT_WITH_OBJECT_DISTANCE; };
+        post = (StateVector state) => { state.dist_minotaur = INTERACT_WITH_OBJECT_DISTANCE; return state; };
+        BasicTask moveToAttack = new BasicTask(StartMoveToAttack_Melee, "Move to attack", pre, post);
+
+        // Attack
+        pre = (StateVector state) => { return state.dist_minotaur <= INTERACT_WITH_OBJECT_DISTANCE && state.seconds_attack > ATTACK_COOLDOWN && state.seconds_damaged > ATTACK_COOLDOWN; };
+        post = (StateVector state) => { state.seconds_attack = 0; return state; };
+        BasicTask attack = new BasicTask(StartAttack_Melee, "Attack", pre, post);
+
+        // Idle to attack
+        pre = (StateVector state) => { return state.seconds_attack <= ATTACK_COOLDOWN || state.seconds_damaged <= ATTACK_COOLDOWN; };
+        post = (StateVector state) => { state.seconds_attack = 2; state.seconds_damaged = 2; return state; };
+        BasicTask idleToAttack = new BasicTask(StartIdleToAttack, "Idle to attack", pre, post);
+
+        // Provoke Minotaur
+        // Method 0: Move to Attack
+        // Method 1: Attack
+        // Method 2: Idle to attack
+        methods = new List<List<Task>>{ new List<Task>(){ moveToAttack }, new List<Task>(){ attack }, new List<Task>(){ idleToAttack } };
+        methodSelector = (StateVector state) => 
+        { 
+            List<List<Task>> meths = new List<List<Task>>();
+
+            if(state.dist_minotaur > INTERACT_WITH_OBJECT_DISTANCE){
+                return new List<List<Task>>(){ new List<Task>(){ moveToAttack } };
+            } else if (attack.preconditionChecker(state))
+            {
+                return new List<List<Task>>(){ new List<Task>(){ attack } };
+            } else 
+            {
+                return new List<List<Task>>(){ new List<Task>(){ idleToAttack } };
+            }
+        };
+        CompositeTask provokeMinotaur = new CompositeTask(methods, methodSelector);
+
         // Be Melee
         // Method 0: Flee Minotaur
         // Method 1: Claim Treasure
-        methods = new List<List<Task>>{ new List<Task>(){ fleeMinotaur }, new List<Task>(){ claimTreasure } };
+        methods = new List<List<Task>>{ new List<Task>(){ fleeMinotaur }, new List<Task>(){ claimTreasure }, new List<Task>(){ provokeMinotaur } };
         methodSelector = (StateVector state) => 
         { 
             List<List<Task>> meths = new List<List<Task>>();
@@ -101,6 +150,10 @@ public class AdventurerController : MonoBehaviour
             {
                 meths.Add(new List<Task>(){ claimTreasure });
             }
+            if(state.treasure_holder != null && state.treasure_holder != this)
+            {
+                meths.Add(new List<Task>(){ provokeMinotaur });
+            }
 
             return meths;
         };
@@ -111,7 +164,104 @@ public class AdventurerController : MonoBehaviour
 
     void InitRangedHTN()
     {
-        
+        // Flee Minotaur
+        Func<StateVector, bool> pre = (StateVector state) => { return state.dist_minotaur < FLEE_DISTANCE; };
+        Func<StateVector, StateVector> post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
+        BasicTask fleeMinotaur = new BasicTask(StartFleeMinotaur, "Flee minotaur", pre, post);
+
+        // Move to Treasure
+        pre = (StateVector state) => { return state.dist_treasure < FLEE_DISTANCE; };
+        post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
+        BasicTask moveToTreasure = new BasicTask(StartMoveToTreasure, "Move to treasure", pre, post);
+
+        // Grab Treasure
+        pre = (StateVector state) => { return state.seconds_dropped_treasure > PICKUP_TREASURE_DELAY && state.dist_treasure <= INTERACT_WITH_OBJECT_DISTANCE; };
+        post = (StateVector state) => { state.treasure_holder = this; return state; };
+        BasicTask grabTreasure = new BasicTask(StartGrabTreasure, "Grab treasure", pre, post);
+
+        // Move to Corner
+        pre = (StateVector state) => { return state.dist_corner > INTERACT_WITH_OBJECT_DISTANCE && state.treasure_holder == this; };
+        post = (StateVector state) => { state.dist_corner = INTERACT_WITH_OBJECT_DISTANCE; return state; };
+        BasicTask moveToCorner = new BasicTask(StartMoveToCorner, "Move to corner", pre, post);
+
+        // Claim Treasure
+        // Method 0: Move to Treasure
+        // Method 1: Grab treasure
+        // Method 2: Move to corner (to claim victory)
+        List<List<Task>> methods = new List<List<Task>>{ new List<Task>(){ moveToTreasure }, new List<Task>(){ grabTreasure }, new List<Task>(){ moveToCorner } };
+        Func<StateVector, List<List<Task>>> methodSelector = (StateVector state) => 
+        { 
+            if(state.treasure_holder == null){
+                return new List<List<Task>>(){ new List<Task>(){ moveToTreasure } };
+            } else
+            {
+                return new List<List<Task>>();
+            }
+        };
+        CompositeTask claimTreasure = new CompositeTask(methods, methodSelector);
+
+        // Move to Attack
+        pre = (StateVector state) => { return !state.line_of_sight; };
+        post = (StateVector state) => { state.line_of_sight = true; return state; };
+        BasicTask moveToAttack = new BasicTask(StartMoveToAttack_Ranged, "Move to attack", pre, post);
+
+        // Attack
+        pre = (StateVector state) => { return state.line_of_sight && state.seconds_attack > ATTACK_COOLDOWN && state.seconds_damaged > ATTACK_COOLDOWN; };
+        post = (StateVector state) => { state.seconds_attack = 0; return state; };
+        BasicTask attack = new BasicTask(StartAttack_Ranged, "Attack", pre, post);
+
+        // Idle to attack
+        pre = (StateVector state) => { return state.seconds_attack <= ATTACK_COOLDOWN || state.seconds_damaged <= ATTACK_COOLDOWN; };
+        post = (StateVector state) => { state.seconds_attack = 2; state.seconds_damaged = 2; return state; };
+        BasicTask idleToAttack = new BasicTask(StartIdleToAttack, "Idle to attack", pre, post);
+
+        // Provoke Minotaur
+        // Method 0: Move to Attack
+        // Method 1: Attack
+        // Method 2: Idle to attack
+        methods = new List<List<Task>>{ new List<Task>(){ moveToAttack }, new List<Task>(){ attack }, new List<Task>(){ idleToAttack } };
+        methodSelector = (StateVector state) => 
+        { 
+            List<List<Task>> meths = new List<List<Task>>();
+
+            if(state.dist_minotaur > INTERACT_WITH_OBJECT_DISTANCE){
+                return new List<List<Task>>(){ new List<Task>(){ moveToAttack } };
+            } else if (attack.preconditionChecker(state))
+            {
+                return new List<List<Task>>(){ new List<Task>(){ attack } };
+            } else 
+            {
+                return new List<List<Task>>(){ new List<Task>(){ idleToAttack } };
+            }
+        };
+        CompositeTask provokeMinotaur = new CompositeTask(methods, methodSelector);
+
+        // Be Melee
+        // Method 0: Flee Minotaur
+        // Method 1: Claim Treasure
+        methods = new List<List<Task>>{ new List<Task>(){ fleeMinotaur }, new List<Task>(){ claimTreasure }, new List<Task>(){ provokeMinotaur } };
+        methodSelector = (StateVector state) => 
+        { 
+            List<List<Task>> meths = new List<List<Task>>();
+
+            if(state.dist_minotaur <= FLEE_DISTANCE)
+            {
+                meths.Add(new List<Task>(){ fleeMinotaur });
+            } 
+            if(state.dist_minotaur > FLEE_DISTANCE)
+            {
+                meths.Add(new List<Task>(){ provokeMinotaur });
+            }
+            if(state.treasure_holder == null || state.treasure_holder == this)
+            {
+                meths.Add(new List<Task>(){ claimTreasure });
+            }
+
+            return meths;
+        };
+        CompositeTask beMelee = new CompositeTask(methods, methodSelector);
+
+        headTask = beMelee;
     }
 
     public void StartFleeMinotaur()
@@ -187,6 +337,160 @@ public class AdventurerController : MonoBehaviour
         currentTask = null;
     }
 
+    public void StartGrabTreasure()
+    {
+        StopAllCoroutines();
+        StartCoroutine(GrabTreasure());
+    }
+    
+    IEnumerator GrabTreasure()
+    {
+        yield return new WaitForSeconds(PICKUP_TREASURE_DELAY);
+        TreasureController.TREASURE.PickupTreasure(this);
+
+        currentTask = null;
+    }
+
+    public void StartMoveToCorner()
+    {
+        StopAllCoroutines();
+        StartCoroutine(MoveToCorner());
+    }
+
+    IEnumerator MoveToCorner()
+    {
+        Partition closestCorner = null;
+        float closestCornerDistance = -1;
+
+        foreach (Partition corner in navMesh.GetCorners())
+        {
+            float distance = Vector3.Distance(transform.position + HEIGHT_OFFSET_TO_GROUND * Vector3.up, corner.GetPosition());
+
+            if (closestCorner == null || closestCornerDistance > distance)
+            {
+                closestCorner = corner;
+                closestCornerDistance = distance;
+            }
+        }
+
+        if (closestCorner == null)
+        {
+            // Reset plan
+            currentTask = null;
+            plan = new List<BasicTask>();
+        }
+
+        List<Partition> path = AStar.FindPath(navMesh.GetPartition(transform.position), closestCorner, gameObject);
+
+        yield return StartCoroutine(FollowPath(path, closestCorner));
+
+        currentTask = null;
+    }
+
+    public void StartMoveToAttack_Melee()
+    {
+        StopAllCoroutines();
+        StartCoroutine(MoveToAttack_Melee());
+    }
+
+    IEnumerator MoveToAttack_Melee()
+    {
+        List<Partition> adjToMinotaur = navMesh.GetPartition(MinotaurController.MINOTAUR.transform.position).GetConnectedPartitions();
+        Partition end = adjToMinotaur[UnityEngine.Random.Range(0, adjToMinotaur.Count)];
+        List<Partition> path = AStar.FindPath(navMesh.GetPartition(transform.position), end, gameObject);
+
+        yield return StartCoroutine(FollowPath(path, end));
+
+        currentTask = null;
+    }
+
+    public void StartMoveToAttack_Ranged()
+    {
+        StopAllCoroutines();
+        StartCoroutine(MoveToAttack_Ranged());
+    }
+
+    IEnumerator MoveToAttack_Ranged()
+    {
+
+
+        int rotations = 16;
+
+        Vector3 attackPoint = Vector3.forward * RANGED_IDEAL_ATTACK_DIST;
+        Partition bestAttackPoint = null;
+        float bestAttackPointDist = -1;
+        
+        for (int j = 0; j < rotations; j++)
+        {
+            Partition goal = null;
+            try
+            {
+                goal = navMesh.GetPartition(MinotaurController.MINOTAUR.transform.position + attackPoint);
+            } catch (Exception e)
+            {
+            }
+
+            if (goal != null)
+            {
+                float pathDist = AStar.FindPathDistance(navMesh.GetPartition(transform.position), goal, new List<GameObject>(){gameObject});
+
+                if (pathDist > 0)
+                {
+                    RaycastHit hit;
+                    Ray ray = new Ray(gameObject.transform.position + HEIGHT_OFFSET_TO_GROUND * Vector3.up, MinotaurController.MINOTAUR.gameObject.transform.position - gameObject.transform.position);
+                    Physics.Raycast(ray, out hit, 40, -1, QueryTriggerInteraction.Ignore);
+
+                    if (hit.collider.gameObject == MinotaurController.MINOTAUR && (bestAttackPointDist == -1 || bestAttackPointDist > pathDist))
+                    {
+                        bestAttackPoint = goal;
+                        bestAttackPointDist = pathDist;
+                    }
+                }
+            }
+
+            attackPoint = Quaternion.AngleAxis(360/rotations, Vector3.up) * attackPoint;
+        }
+        
+        if (bestAttackPoint == null)
+        {
+            // Try again in a second if a position to attack from is not found
+            yield return new WaitForSeconds(1);
+            StartCoroutine(MoveToAttack_Ranged());
+            yield break;
+        }
+
+        List<Partition> path = AStar.FindPath(navMesh.GetPartition(transform.position), bestAttackPoint, gameObject);
+
+        yield return StartCoroutine(FollowPath(path, bestAttackPoint));
+    }
+
+    public void StartAttack_Melee()
+    {
+        StopAllCoroutines();
+        MinotaurController.MINOTAUR.Attack(this);
+        currentState.seconds_attack = 0;
+        currentTask = null;
+    }
+
+    public void StartAttack_Ranged()
+    {
+        StopAllCoroutines();
+        MinotaurController.MINOTAUR.Attack(this);
+        currentState.seconds_attack = 0;
+        currentTask = null;
+    }
+
+    public void StartIdleToAttack()
+    {
+        StopAllCoroutines();
+    }
+
+    IEnumerator IdleToAttack()
+    {
+        yield return new WaitForSeconds(ATTACK_COOLDOWN * 1.5f);
+        currentTask = null;
+    }
+
     IEnumerator FollowPath(List<Partition> path, Partition end)
     {
         if (path == null)
@@ -217,8 +521,25 @@ public class AdventurerController : MonoBehaviour
     {
         UpdateCurrentState();
 
+        // End game condition
+        if (currentState.dist_corner <= INTERACT_WITH_OBJECT_DISTANCE && currentState.treasure_holder == this)
+        {
+            PlayerInputController.VICTORY_TEXT.gameObject.SetActive(true);
+            Time.timeScale = 0f;
+        }
+
         if (plan != null)
         {
+            // Check if plan still works
+            if (!HTN.DoesPlanStillWork(currentState, currentTask, plan))
+            {
+                Debug.Log("regen plan");
+                plan = HTN.GeneratePlan(currentState, headTask);
+                StopAllCoroutines();
+                currentTask = null;
+            }
+
+            // Check if there is still a plan left
             if (plan.Count < 1 && currentTask == null)
             {
                 plan = HTN.GeneratePlan(currentState, headTask);
@@ -299,9 +620,10 @@ public class AdventurerController : MonoBehaviour
     // Waits to calculate a new plan
     IEnumerator IdleAndReplan()
     {
+        Debug.Log("idling",this);
         plan = null;
 
-        yield return new WaitForSeconds(2);
+        yield return new WaitForSeconds(1);
 
         plan = new List<BasicTask>();
     }
@@ -373,6 +695,7 @@ public class AdventurerController : MonoBehaviour
     public void TakeDamage()
     {
         healthBar.value -= 1;
+        currentState.seconds_damaged = 0;
         if (healthBar.value == 0)
         {
             gameObject.SetActive(false);

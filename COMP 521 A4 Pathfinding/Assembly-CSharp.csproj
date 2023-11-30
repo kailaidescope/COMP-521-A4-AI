@@ -69,6 +69,7 @@
     <Compile Include="Assets/Scripts/Navigation/AStar.cs" />
     <Compile Include="Assets/Scripts/HTN/HTN.cs" />
     <Compile Include="Assets/Scripts/Controllers/TreasureController.cs" />
+    <Compile Include="Assets/Scripts/HTN/PlannerState.cs" />
     <Compile Include="Assets/Scripts/Controllers/CharacterController.cs" />
     <Compile Include="Assets/Scripts/HTN/BasicTask.cs" />
     <Compile Include="Assets/Scripts/Navigation/PriorityQueue.cs" />
@@ -77,7 +78,6 @@
     <Compile Include="Assets/Scripts/Controllers/PlayerInputController.cs" />
     <Compile Include="Assets/Scripts/Navigation/Edge.cs" />
     <Compile Include="Assets/Scripts/Navigation/Partition.cs" />
-    <Compile Include="Assets/Scripts/HTN/PlannerState.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets/TextMesh Pro/Shaders/TMPro.cginc" />
