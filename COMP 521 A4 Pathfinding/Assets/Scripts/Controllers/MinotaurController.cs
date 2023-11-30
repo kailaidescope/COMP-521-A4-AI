@@ -179,6 +179,11 @@ public class MinotaurController : MonoBehaviour
             }
             if (Vector3.Distance(transform.position, adventurer.transform.position) <= ATTACK_RADIUS && secondsSinceLastAttack > ATTACK_COOLDOWN)
             {
+                if (secondsSinceLastAttack <= ATTACK_COOLDOWN)
+                {
+                    yield return new WaitForSeconds(1);
+                } 
+                
                 StartCoroutine(Attack());
                 yield break;
             }

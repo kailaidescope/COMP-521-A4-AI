@@ -8,6 +8,10 @@ public class BasicTask : Task
 {
     public Action _operator;
     public String description;
+    // Engine for CheckPreconditions
+    public Func<StateVector, bool> preconditionChecker;
+    // Engine for ApplyPostconditions
+    public Func<StateVector, StateVector> postconditionApplier;
 
     public BasicTask(Action op, String description, Func<StateVector, bool> pre, Func<StateVector, StateVector> post)
     {
@@ -17,12 +21,12 @@ public class BasicTask : Task
         postconditionApplier = post;
     }
 
-    public override bool CheckPreconditions(StateVector state)
+    public bool CheckPreconditions(StateVector state)
     {
         return preconditionChecker(state);
     }
     
-    public override StateVector ApplyPostconditions(StateVector state)
+    public StateVector ApplyPostconditions(StateVector state)
     {
         return postconditionApplier(state);
     }

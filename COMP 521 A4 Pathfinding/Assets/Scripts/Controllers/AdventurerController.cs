@@ -44,12 +44,14 @@ public class AdventurerController : MonoBehaviour
         navMesh = FindObjectOfType<NavMesh>();
         healthBar.value = MAX_HEALTH;
 
+        InitMeleeHTN();
+
         if (adventurerType == AdventurerType.MELEE)
         {
-            InitMeleeHTN();
+            //InitMeleeHTN();
         } else 
         {
-            InitRangedHTN();
+            //InitRangedHTN();
         }
     }
 
@@ -67,28 +69,43 @@ public class AdventurerController : MonoBehaviour
 
         // Claim Treasure
         // Method 0: Move to Treasure
-        pre = (StateVector state) => { return state.dist_treasure < FLEE_DISTANCE; };
-        post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
-        CompositeTask claimTreasure = new CompositeTask(new List<List<Task>>{ new List<Task>(){ moveToTreasure } }, pre, post);
+        List<List<Task>> methods = new List<List<Task>>{ new List<Task>(){ moveToTreasure } };
+        Func<StateVector, List<List<Task>>> methodSelector = (StateVector state) => 
+        { 
+            if(state.treasure_holder == null){
+                return new List<List<Task>>(){ new List<Task>(){ moveToTreasure } };
+            } else
+            {
+                return new List<List<Task>>();
+            }
+        };
+        CompositeTask claimTreasure = new CompositeTask(methods, methodSelector);
+
+        // Be Melee
+        // Method 0: Flee Minotaur
+        // Method 1: Claim Treasure
+        methods = new List<List<Task>>{ new List<Task>(){ fleeMinotaur }, new List<Task>(){ claimTreasure } };
+        methodSelector = (StateVector state) => 
+        { 
+            List<List<Task>> meths = new List<List<Task>>();
+
+            if(state.dist_minotaur <= FLEE_DISTANCE)
+            {
+                meths.Add(new List<Task>(){ fleeMinotaur });
+            } 
+            if(state.treasure_holder == null || state.treasure_holder == this)
+            {
+                meths.Add(new List<Task>(){ claimTreasure });
+            }
+
+            return meths;
+        };
+        CompositeTask beMelee = new CompositeTask(methods, methodSelector);
     }
 
     void InitRangedHTN()
     {
-        // Flee Minotaur
-        Func<StateVector, bool> pre = (StateVector state) => { return state.dist_minotaur < FLEE_DISTANCE; };
-        Func<StateVector, StateVector> post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
-        BasicTask fleeMinotaur = new BasicTask(StartFleeMinotaur, "Fleeing minotaur", pre, post);
-
-        // Move to Treasure
-        pre = (StateVector state) => { return state.dist_treasure < FLEE_DISTANCE; };
-        post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
-        BasicTask moveToTreasure = new BasicTask(StartMoveToTreasure, "Moving to treasure", pre, post);
-
-        // Claim Treasure
-        // Method 0: Move to Treasure
-        pre = (StateVector state) => { return state.dist_treasure < FLEE_DISTANCE; };
-        post = (StateVector state) => { state.dist_minotaur = FLEE_DISTANCE; return state; };
-        CompositeTask claimTreasure = new CompositeTask(new List<List<Task>>{ new List<Task>(){ moveToTreasure } }, pre, post);
+        
     }
 
     public void StartFleeMinotaur()
@@ -126,7 +143,7 @@ public class AdventurerController : MonoBehaviour
                 }
             } catch(Exception e)
             {
-                Debug.Log("Exception caught: "+e);
+                //Debug.Log("Exception caught: "+e);
             }
 
             fleePoint = Quaternion.AngleAxis(360/rotations, Vector3.up) * fleePoint;
@@ -142,7 +159,7 @@ public class AdventurerController : MonoBehaviour
         Partition end = navMesh.GetPartition(transform.position + bestFleePoint);
         List<Partition> path = AStar.FindPath(navMesh.GetPartition(transform.position), end, gameObject);
 
-        yield return StartCoroutine(MoveOnPath(path, end));
+        yield return StartCoroutine(FollowPath(path, end));
     }
 
     public void StartMoveToTreasure()
@@ -157,10 +174,10 @@ public class AdventurerController : MonoBehaviour
         Partition end = adjToTreasure[UnityEngine.Random.Range(0, adjToTreasure.Count)];
         List<Partition> path = AStar.FindPath(navMesh.GetPartition(transform.position), end, gameObject);
 
-        yield return StartCoroutine(MoveOnPath(path, end));
+        yield return StartCoroutine(FollowPath(path, end));
     }
 
-    IEnumerator MoveOnPath(List<Partition> path, Partition end)
+    IEnumerator FollowPath(List<Partition> path, Partition end)
     {
         if (path == null)
         {
@@ -265,6 +282,7 @@ public class AdventurerController : MonoBehaviour
         {
             if (curPath[i].GetOccupied() != null && curPath[i].GetOccupied() != gameObject)
             {
+                Debug.Log("Path blocked by: "+curPath[i].GetOccupied());
                 blocked = true;
             }
         }

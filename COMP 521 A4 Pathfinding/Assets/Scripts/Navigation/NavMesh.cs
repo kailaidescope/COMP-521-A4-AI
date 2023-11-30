@@ -181,6 +181,7 @@ public class NavMesh : MonoBehaviour
 
         return null;
     }
+    
 
     void OnDrawGizmosSelected()
     {
